@@ -240,12 +240,6 @@
             margin-bottom: 16px;
         }
 
-        .project-views {
-            font-size: 12px;
-            margin-bottom: 16px;
-            opacity: 0.6;
-        }
-
         .project-buttons {
             display: flex;
             gap: 12px;
@@ -368,48 +362,71 @@
 
     <script>
         let editingProjectId = null;
+        let currentProjects = [];
 
-        function getProjects() {
-            const data = localStorage.getItem('shatovProjects');
-            if (data) {
-                try {
-                    return JSON.parse(data);
-                } catch (e) {
-                    return getDefaultProjects();
-                }
+        async function loadData() {
+            try {
+                const response = await fetch('data.json?t=' + Date.now());
+                const data = await response.json();
+                currentProjects = data.projects || [];
+                return data;
+            } catch (error) {
+                console.log('Using default data');
+                currentProjects = [
+                    {
+                        id: 1,
+                        title: 'Telegram Web App',
+                        subtitle: 'Нарды',
+                        description: 'Интерактивная игровая платформа с мультиплеером в реальном времени'
+                    },
+                    {
+                        id: 2,
+                        title: 'Приложение для университета',
+                        subtitle: 'Образовательная платформа',
+                        description: 'Упрощенный процесс поступления с интуитивным интерфейсом'
+                    },
+                    {
+                        id: 3,
+                        title: 'Магазин одежды',
+                        subtitle: 'Oblivium',
+                        description: 'Минималистичный e-commerce с фокусом на визуальное повествование'
+                    }
+                ];
+                return { projects: currentProjects, analytics: {} };
             }
-            return getDefaultProjects();
         }
 
-        function getDefaultProjects() {
-            const defaults = [
-                {
-                    id: 1,
-                    title: 'Telegram Web App',
-                    subtitle: 'Нарды',
-                    description: 'Интерактивная игровая платформа с мультиплеером в реальном времени'
-                },
-                {
-                    id: 2,
-                    title: 'Приложение для университета',
-                    subtitle: 'Образовательная платформа',
-                    description: 'Упрощенный процесс поступления с интуитивным интерфейсом'
-                },
-                {
-                    id: 3,
-                    title: 'Магазин одежды',
-                    subtitle: 'Oblivium',
-                    description: 'Минималистичный e-commerce с фокусом на визуальное повествование'
+        async function saveData() {
+            const data = {
+                projects: currentProjects,
+                analytics: {
+                    totalVisitors: 247,
+                    sections: {
+                        hero: 156,
+                        info: 134,
+                        projects: 189
+                    },
+                    projectViews: {}
                 }
-            ];
-            saveProjects(defaults);
-            return defaults;
-        }
+            };
 
-        function saveProjects(projects) {
-            localStorage.setItem('shatovProjects', JSON.stringify(projects));
-            showSuccessMessage();
-            updateProjectCount(projects.length);
+            try {
+                const response = await fetch('save.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showSuccessMessage();
+                }
+            } catch (error) {
+                console.error('Ошибка сохранения:', error);
+                alert('Ошибка сохранения. Убедитесь что save.php загружен на сервер.');
+            }
         }
 
         function showSuccessMessage() {
@@ -432,7 +449,7 @@
             if (login === 'shatov' && password === 'geniy31') {
                 document.getElementById('loginContainer').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
-                loadProjects();
+                loadDashboard();
             } else {
                 alert('Неверные данные');
             }
@@ -445,13 +462,17 @@
             document.getElementById('passwordInput').value = '';
         }
 
+        async function loadDashboard() {
+            await loadData();
+            loadProjects();
+        }
+
         function loadProjects() {
-            const projects = getProjects();
             const container = document.getElementById('projectsList');
             container.innerHTML = '';
-            updateProjectCount(projects.length);
+            updateProjectCount(currentProjects.length);
 
-            projects.forEach(project => {
+            currentProjects.forEach(project => {
                 const projectDiv = document.createElement('div');
                 projectDiv.className = 'project-item';
                 projectDiv.id = `project-${project.id}`;
@@ -493,16 +514,15 @@
             });
         }
 
-        function handleAddProject() {
-            const projects = getProjects();
+        async function handleAddProject() {
             const newProject = {
                 id: Date.now(),
                 title: 'Новый проект',
                 subtitle: 'Подзаголовок',
                 description: 'Описание проекта'
             };
-            projects.push(newProject);
-            saveProjects(projects);
+            currentProjects.push(newProject);
+            await saveData();
             loadProjects();
         }
 
@@ -511,32 +531,30 @@
             loadProjects();
         }
 
-        function handleSaveProject(id) {
-            const projects = getProjects();
+        async function handleSaveProject(id) {
             const title = document.getElementById(`title-${id}`).value;
             const subtitle = document.getElementById(`subtitle-${id}`).value;
             const description = document.getElementById(`description-${id}`).value;
 
-            const projectIndex = projects.findIndex(p => p.id === id);
+            const projectIndex = currentProjects.findIndex(p => p.id === id);
             if (projectIndex !== -1) {
-                projects[projectIndex] = {
-                    ...projects[projectIndex],
+                currentProjects[projectIndex] = {
+                    ...currentProjects[projectIndex],
                     title,
                     subtitle,
                     description
                 };
-                saveProjects(projects);
+                await saveData();
             }
 
             editingProjectId = null;
             loadProjects();
         }
 
-        function handleDeleteProject(id) {
+        async function handleDeleteProject(id) {
             if (confirm('Точно удалить этот проект?')) {
-                const projects = getProjects();
-                const filtered = projects.filter(p => p.id !== id);
-                saveProjects(filtered);
+                currentProjects = currentProjects.filter(p => p.id !== id);
+                await saveData();
                 loadProjects();
             }
         }

@@ -317,6 +317,12 @@
             letter-spacing: 1px;
             position: relative;
             z-index: 1;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        footer p:hover {
+            opacity: 1;
         }
 
         .copyright {
@@ -334,6 +340,9 @@
     </style>
 </head>
 <body>
+    <nav>
+        <a href="admin.html">ADMIN</a>
+    </nav>
 
     <section class="hero">
         <div class="hero-shape-1"></div>
@@ -383,48 +392,45 @@
     <footer>
         <div class="footer-line"></div>
         <h3>Давайте работать вместе</h3>
-        <p>Свяжитесь для новых проектов</p>
+        <p onclick="window.open('https://t.me/shatov_dsg', '_blank')">Свяжитесь для новых проектов</p>
         <div class="copyright">© 2025 SHATOV</div>
     </footer>
 
     <script>
-        function getProjects() {
-            const data = localStorage.getItem('shatovProjects');
-            if (data) {
-                try {
-                    return JSON.parse(data);
-                } catch (e) {
-                    return getDefaultProjects();
-                }
+        async function loadProjects() {
+            try {
+                // Try loading from data.json first
+                const response = await fetch('data.json?t=' + Date.now());
+                const data = await response.json();
+                renderProjects(data.projects);
+            } catch (error) {
+                // Fallback to default projects
+                console.log('Loading default projects');
+                const defaultProjects = [
+                    {
+                        id: 1,
+                        title: 'Telegram Web App',
+                        subtitle: 'Нарды',
+                        description: 'Интерактивная игровая платформа с мультиплеером в реальном времени'
+                    },
+                    {
+                        id: 2,
+                        title: 'Приложение для университета',
+                        subtitle: 'Образовательная платформа',
+                        description: 'Упрощенный процесс поступления с интуитивным интерфейсом'
+                    },
+                    {
+                        id: 3,
+                        title: 'Магазин одежды',
+                        subtitle: 'Oblivium',
+                        description: 'Минималистичный e-commerce с фокусом на визуальное повествование'
+                    }
+                ];
+                renderProjects(defaultProjects);
             }
-            return getDefaultProjects();
         }
 
-        function getDefaultProjects() {
-            return [
-                {
-                    id: 1,
-                    title: 'Telegram Web App',
-                    subtitle: 'Нарды',
-                    description: 'Интерактивная игровая платформа с мультиплеером в реальном времени'
-                },
-                {
-                    id: 2,
-                    title: 'Приложение для университета',
-                    subtitle: 'Образовательная платформа',
-                    description: 'Упрощенный процесс поступления с интуитивным интерфейсом'
-                },
-                {
-                    id: 3,
-                    title: 'Магазин одежды',
-                    subtitle: 'Oblivium',
-                    description: 'Минималистичный e-commerce с фокусом на визуальное повествование'
-                }
-            ];
-        }
-
-        function loadProjects() {
-            const projects = getProjects();
+        function renderProjects(projects) {
             const container = document.getElementById('projectsContainer');
             container.innerHTML = '';
 
@@ -477,16 +483,8 @@
         // Load projects on page load
         window.addEventListener('DOMContentLoaded', loadProjects);
 
-        // Listen for storage changes from admin panel
-        window.addEventListener('storage', (e) => {
-            if (e.key === 'shatovProjects') {
-                loadProjects();
-            }
-        });
-
-        // Reload on focus (when returning from admin)
-        window.addEventListener('focus', loadProjects);
+        // Reload projects every 3 seconds to catch updates
+        setInterval(loadProjects, 3000);
     </script>
 </body>
 </html>
-
