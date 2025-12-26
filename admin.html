@@ -240,6 +240,13 @@
             margin-bottom: 16px;
         }
 
+        .project-link {
+            font-size: 13px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+            font-style: italic;
+        }
+
         .project-buttons {
             display: flex;
             gap: 12px;
@@ -276,6 +283,38 @@
             font-weight: 700;
             letter-spacing: 1px;
             display: none;
+        }
+
+        .json-output-section {
+            background: #000;
+            color: #0f0;
+            padding: 30px;
+            margin-top: 30px;
+        }
+
+        .json-output-section h3 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            letter-spacing: 2px;
+        }
+
+        .json-output-section textarea {
+            width: 100%;
+            min-height: 250px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            background: #111;
+            color: #0f0;
+            border: 2px solid #0f0;
+            resize: vertical;
+        }
+
+        .json-instructions {
+            margin-top: 16px;
+            font-size: 13px;
+            line-height: 1.6;
+            opacity: 0.8;
         }
 
         @media (max-width: 768px) {
@@ -356,6 +395,17 @@
                 <div class="success-message" id="successMessage">
                     ✓ ИЗМЕНЕНИЯ СОХРАНЕНЫ
                 </div>
+
+                <div class="json-output-section">
+                    <h3>► СКОПИРУЙ ЭТОТ КОД И ЗАМЕНИ В data.json</h3>
+                    <textarea id="jsonOutput" readonly></textarea>
+                    <div class="json-instructions">
+                        1. После изменений скопируй весь текст выше<br>
+                        2. Открой файл data.json на твоем хостинге (Vercel/GitHub)<br>
+                        3. Удали старое содержимое и вставь новое<br>
+                        4. Сохрани файл → изменения появятся на сайте
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -364,39 +414,46 @@
         let editingProjectId = null;
         let currentProjects = [];
 
+        function getDefaultProjects() {
+            return [
+                {
+                    id: 1,
+                    title: 'Telegram Web App',
+                    subtitle: 'Нарды',
+                    description: 'Интерактивная игровая платформа с мультиплеером в реальном времени',
+                    link: 'https://www.figma.com/design/your-project-1'
+                },
+                {
+                    id: 2,
+                    title: 'Приложение для университета',
+                    subtitle: 'Образовательная платформа',
+                    description: 'Упрощенный процесс поступления с интуитивным интерфейсом',
+                    link: 'https://www.figma.com/design/your-project-2'
+                },
+                {
+                    id: 3,
+                    title: 'Магазин одежды',
+                    subtitle: 'Oblivium',
+                    description: 'Минималистичный e-commerce с фокусом на визуальное повествование',
+                    link: 'https://www.figma.com/design/your-project-3'
+                }
+            ];
+        }
+
         async function loadData() {
             try {
                 const response = await fetch('data.json?t=' + Date.now());
                 const data = await response.json();
-                currentProjects = data.projects || [];
+                currentProjects = data.projects || getDefaultProjects();
                 return data;
             } catch (error) {
                 console.log('Using default data');
-                currentProjects = [
-                    {
-                        id: 1,
-                        title: 'Telegram Web App',
-                        subtitle: 'Нарды',
-                        description: 'Интерактивная игровая платформа с мультиплеером в реальном времени'
-                    },
-                    {
-                        id: 2,
-                        title: 'Приложение для университета',
-                        subtitle: 'Образовательная платформа',
-                        description: 'Упрощенный процесс поступления с интуитивным интерфейсом'
-                    },
-                    {
-                        id: 3,
-                        title: 'Магазин одежды',
-                        subtitle: 'Oblivium',
-                        description: 'Минималистичный e-commerce с фокусом на визуальное повествование'
-                    }
-                ];
+                currentProjects = getDefaultProjects();
                 return { projects: currentProjects, analytics: {} };
             }
         }
 
-        async function saveData() {
+        function updateJSON() {
             const data = {
                 projects: currentProjects,
                 analytics: {
@@ -409,24 +466,9 @@
                     projectViews: {}
                 }
             };
-
-            try {
-                const response = await fetch('save.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    showSuccessMessage();
-                }
-            } catch (error) {
-                console.error('Ошибка сохранения:', error);
-                alert('Ошибка сохранения. Убедитесь что save.php загружен на сервер.');
-            }
+            
+            const jsonOutput = document.getElementById('jsonOutput');
+            jsonOutput.value = JSON.stringify(data, null, 2);
         }
 
         function showSuccessMessage() {
@@ -465,6 +507,7 @@
         async function loadDashboard() {
             await loadData();
             loadProjects();
+            updateJSON();
         }
 
         function loadProjects() {
@@ -496,6 +539,12 @@
                             id="description-${project.id}"
                             placeholder="Описание"
                         >${project.description}</textarea>
+                        <input 
+                            type="text" 
+                            value="${project.link || ''}" 
+                            id="link-${project.id}"
+                            placeholder="Ссылка на Figma / PDF (https://...)"
+                        >
                         <button class="btn-done" onclick="handleSaveProject(${project.id})">СОХРАНИТЬ</button>
                     `;
                 } else {
@@ -503,6 +552,7 @@
                         <h3 class="project-title">${project.title}</h3>
                         <p class="project-subtitle">${project.subtitle}</p>
                         <p class="project-description">${project.description}</p>
+                        ${project.link ? `<p class="project-link">🔗 ${project.link}</p>` : ''}
                         <div class="project-buttons">
                             <button class="btn-edit" onclick="handleEditProject(${project.id})">ИЗМЕНИТЬ</button>
                             <button class="btn-delete" onclick="handleDeleteProject(${project.id})">УДАЛИТЬ</button>
@@ -514,16 +564,18 @@
             });
         }
 
-        async function handleAddProject() {
+        function handleAddProject() {
             const newProject = {
                 id: Date.now(),
                 title: 'Новый проект',
                 subtitle: 'Подзаголовок',
-                description: 'Описание проекта'
+                description: 'Описание проекта',
+                link: 'https://www.figma.com/design/your-project'
             };
             currentProjects.push(newProject);
-            await saveData();
+            showSuccessMessage();
             loadProjects();
+            updateJSON();
         }
 
         function handleEditProject(id) {
@@ -531,10 +583,11 @@
             loadProjects();
         }
 
-        async function handleSaveProject(id) {
+        function handleSaveProject(id) {
             const title = document.getElementById(`title-${id}`).value;
             const subtitle = document.getElementById(`subtitle-${id}`).value;
             const description = document.getElementById(`description-${id}`).value;
+            const link = document.getElementById(`link-${id}`).value;
 
             const projectIndex = currentProjects.findIndex(p => p.id === id);
             if (projectIndex !== -1) {
@@ -542,24 +595,26 @@
                     ...currentProjects[projectIndex],
                     title,
                     subtitle,
-                    description
+                    description,
+                    link
                 };
-                await saveData();
+                showSuccessMessage();
             }
 
             editingProjectId = null;
             loadProjects();
+            updateJSON();
         }
 
-        async function handleDeleteProject(id) {
+        function handleDeleteProject(id) {
             if (confirm('Точно удалить этот проект?')) {
                 currentProjects = currentProjects.filter(p => p.id !== id);
-                await saveData();
+                showSuccessMessage();
                 loadProjects();
+                updateJSON();
             }
         }
 
-        // Handle Enter key in login
         document.addEventListener('DOMContentLoaded', () => {
             const loginInput = document.getElementById('loginInput');
             const passwordInput = document.getElementById('passwordInput');
